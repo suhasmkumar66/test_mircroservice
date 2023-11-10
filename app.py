@@ -9,7 +9,7 @@ class RegisterClass:
         resp.body = json.dumps(result)
 
 class LoginClass:
-    def on_get(self,req,resp):
+    def on_post(self,req,resp):
         data = json.loads(req.stream.read())
         if data['username'] == "suhas":
             result = {"username":"suhas","age":"27"}
