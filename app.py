@@ -63,14 +63,16 @@ class LoginClass:
 								'email':output['email'],'role':output['role']}
 				
 				resp.status = falcon.HTTP_200
+				resp.body = json.dumps(result)
 			else:
 				result = {'error':'username and password is incorrect'}
 				resp.status = falcon.HTTP_400
+				resp.body = json.dumps(result)
 			
 		else:
 			result = {"error":"required params missing"}
 			resp.status = falcon.HTTP_400
-		resp.body = json.dumps(result)
+			resp.body = json.dumps(result)
 		
 
 
