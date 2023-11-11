@@ -47,6 +47,7 @@ class RegisterClass:
 		else:
 			result = {"error":"required params missing"}
 			resp.status = falcon.HTTP_400
+			resp.body = json.dumps(result)
 
 class LoginClass:
 	def on_post(self,req,resp):
