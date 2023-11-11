@@ -44,6 +44,9 @@ class RegisterClass:
 			result = {"msg":"user registered sucessfully"}
 			resp.status = falcon.HTTP_200
 			resp.body = json.dumps(result)
+		else:
+			result = {"error":"required params missing"}
+			resp.status = falcon.HTTP_400
 
 class LoginClass:
 	def on_post(self,req,resp):
