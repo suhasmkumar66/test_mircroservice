@@ -17,7 +17,7 @@ class RegisterClass:
 	def on_post(self,req,resp):
 		data = json.loads(req.stream.read())
 		if 'first_name' in data and 'last_name' in data and 'username' in data and 'password' in data and 'PPSN' in data and 'address' in data and 'eir_code' in data and 'email' in data:
-			sQry = "select * from `users`.customer where username = '{0}'".format(data['username'])
+			sQry = "select * from `users`.customers where username = '{0}'".format(data['username'])
 			cur = conn.cursor()
 			cur.execute(sQry)
 			output = cur.fetchone()
@@ -26,7 +26,7 @@ class RegisterClass:
 				resp.status = falcon.HTTP_400
 				resp.body = json.dumps(result)
 				return
-			sQry = "select * from `users`.customer where email = '{0}'".format(data['email'])
+			sQry = "select * from `users`.customers where email = '{0}'".format(data['email'])
 			cur.execute(sQry)
 			output = cur.fetchone()
 			if output is not None:
@@ -35,7 +35,7 @@ class RegisterClass:
 				resp.body = json.dumps(result)
 				return
 			now = datetime.now()
-			Iqry = "INSERT INTO `users`.customer (`first_name`,`last_name`,`username`,\
+			Iqry = "INSERT INTO `users`.customers (`first_name`,`last_name`,`username`,\
 				`password`,`PPSN`,`address`,`eir_code`,`email`,`role`,`created_date`) \
 				values ('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}')"\
 				.format(data['first_name'],data['last_name'],data['username'],\
@@ -56,22 +56,13 @@ class LoginClass:
 	def on_post(self,req,resp):
 		data = json.loads(req.stream.read())
 		if 'username' in data and 'password' in data:
-			sQry = "select * from `users`.customer where username = '{0}'".format(data['username'])
+			sQry = "select * from `users`.customers where username = '{0}'".format(data['username'])
 			print(sQry)
 			cur = conn.cursor()
 			cur.execute(sQry)
 			output = cur.fetchone()
-			print(output)
 			if output is not None:
-				try:
-					decoded_bytes = base64.b64decode(data['password'])
-					decoded_string = decoded_bytes.decode('utf-8')
-				except Exception as e:
-					result = {'error':'password cannot be decoded'}
-					resp.status = falcon.HTTP_400
-					resp.body = json.dumps(result)
-					return
-				if decoded_string == output['password']:
+				if data['password'] == output['password']:
 					result = {'id':output['id'],'first_name':output['first_name'],\
 							'last_name':output['last_name'],'PPSN':output['PPSN'],\
 								'address':output['address'],'eir_code':output['eir_code'],\
