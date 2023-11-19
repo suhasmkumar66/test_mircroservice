@@ -1,6 +1,8 @@
 import json,falcon,sys
 import pymysql
 from datetime import datetime
+import base64
+
 
 conn = pymysql.connect( 
 		host='cs5721-project-suhasmkumar66-35d6.a.aivencloud.com', 
@@ -61,7 +63,9 @@ class LoginClass:
 			output = cur.fetchone()
 			print(output)
 			if output is not None:
-				if data['password'] == output['password']:
+				decoded_bytes = base64.b64decode(data['password'])
+				decoded_string = decoded_bytes.decode('utf-8')
+				if decoded_string == output['password']:
 					result = {'id':output['id'],'first_name':output['first_name'],\
 							'last_name':output['last_name'],'PPSN':output['PPSN'],\
 								'address':output['address'],'eir_code':output['eir_code'],\
