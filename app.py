@@ -16,6 +16,7 @@ class RegisterClass:
 		data = json.loads(req.stream.read())
 		if 'first_name' in data and 'last_name' in data and 'username' in data and 'password' in data and 'PPSN' in data and 'address' in data and 'eir_code' in data and 'email' in data:
 			sQry = "select * from `users`.customer where username = '{0}'".format(data['username'])
+			cur = conn.cursor()
 			cur.execute(sQry)
 			output = cur.fetchone()
 			if output is not None:
@@ -53,19 +54,27 @@ class LoginClass:
 	def on_post(self,req,resp):
 		data = json.loads(req.stream.read())
 		if 'username' in data and 'password' in data:
-			sQry = "select * from `users`.customer where username = '{0}' and password = '{1}'".format(data['username'],data['password'])
+			sQry = "select * from `users`.customer where username = '{0}'".format(data['username'])
+			print(sQry)
+			cur = conn.cursor()
 			cur.execute(sQry)
 			output = cur.fetchone()
+			print(output)
 			if output is not None:
-				result = {'id':output['id'],'first_name':output['first_name'],\
-						  'last_name':output['last_name'],'PPSN':output['PPSN'],\
-							'address':output['address'],'eir_code':output['eir_code'],\
-								'email':output['email'],'role':output['role']}
-				
-				resp.status = falcon.HTTP_200
-				resp.body = json.dumps(result)
+				if data['password'] == output['password']:
+					result = {'id':output['id'],'first_name':output['first_name'],\
+							'last_name':output['last_name'],'PPSN':output['PPSN'],\
+								'address':output['address'],'eir_code':output['eir_code'],\
+									'email':output['email'],'role':output['role']}
+					
+					resp.status = falcon.HTTP_200
+					resp.body = json.dumps(result)
+				else:
+					result = {'error':'password is incorrect'}
+					resp.status = falcon.HTTP_200
+					resp.body = json.dumps(result)
 			else:
-				result = {'error':'username and password is incorrect'}
+				result = {'error':'username is incorrect'}
 				resp.status = falcon.HTTP_400
 				resp.body = json.dumps(result)
 			
@@ -75,9 +84,31 @@ class LoginClass:
 			resp.body = json.dumps(result)
 		
 
+class GetProductsClass:
+	def on_post(self,req,resp):
+		data = json.loads(req.stream.read())
+		if 'category_id' in data:
+			sQry = "select * from `products`.product_list where category_id = '{0}'".format(int(data['category_id']))
+			cur = conn.cursor()
+			cur.execute(sQry)
+			result = cur.fetchall()
+			print(result)
+			result_list = []
+			for row in result:
+				result_list.append(row)
+			
+			resp.status = falcon.HTTP_200
+			resp.body = json.dumps(result_list)
+		else:
+			result = {"error":"required params missing"}
+			resp.status = falcon.HTTP_400
+			resp.body = json.dumps(result)
+
 
 
 api = falcon.API()
 api.add_route('/register',RegisterClass())
 
 api.add_route('/login',LoginClass())
+
+api.add_route('/get-products', GetProductsClass())
