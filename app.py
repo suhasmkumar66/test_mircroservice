@@ -63,8 +63,14 @@ class LoginClass:
 			output = cur.fetchone()
 			print(output)
 			if output is not None:
-				decoded_bytes = base64.b64decode(data['password'])
-				decoded_string = decoded_bytes.decode('utf-8')
+				try:
+					decoded_bytes = base64.b64decode(data['password'])
+					decoded_string = decoded_bytes.decode('utf-8')
+				except Exception as e:
+					result = {'error':'password cannot be decoded'}
+					resp.status = falcon.HTTP_400
+					resp.body = json.dumps(result)
+					return
 				if decoded_string == output['password']:
 					result = {'id':output['id'],'first_name':output['first_name'],\
 							'last_name':output['last_name'],'PPSN':output['PPSN'],\
