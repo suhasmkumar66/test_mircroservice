@@ -3,18 +3,18 @@ import pymysql
 from datetime import datetime
 import base64
 
-
-conn = pymysql.connect( 
-		host='cs5721-project-suhasmkumar66-35d6.a.aivencloud.com', 
-		user='avnadmin',  
-		password = "AVNS_9ZVRUDfaIDQXFi0H9r1",  
-		port=27477,
-		cursorclass=pymysql.cursors.DictCursor
-		)
-cur = conn.cursor()
-
+def conn_db():
+	conn = pymysql.connect( 
+			host='cs5721-project-suhasmkumar66-35d6.a.aivencloud.com', 
+			user='avnadmin',  
+			password = "AVNS_9ZVRUDfaIDQXFi0H9r1",  
+			port=27477,
+			cursorclass=pymysql.cursors.DictCursor
+			)
+	return conn
 class RegisterClass:
 	def on_post(self,req,resp):
+		conn = conn_db()
 		data = json.loads(req.stream.read())
 		if 'first_name' in data and 'last_name' in data and 'username' in data and 'password' in data and 'PPSN' in data and 'address' in data and 'eir_code' in data and 'email' in data:
 			sQry = "select * from `users`.customers where username = '{0}'".format(data['username'])
@@ -54,6 +54,7 @@ class RegisterClass:
 
 class LoginClass:
 	def on_post(self,req,resp):
+		conn = conn_db()
 		data = json.loads(req.stream.read())
 		if 'username' in data and 'password' in data:
 			sQry = "select * from `users`.customers where username = '{0}'".format(data['username'])
@@ -87,6 +88,7 @@ class LoginClass:
 
 class GetProductsClass:
 	def on_post(self,req,resp):
+		conn = conn_db()
 		data = json.loads(req.stream.read())
 		if 'category_id' in data:
 			sQry = "select * from `products`.product_list where category_id = '{0}'".format(int(data['category_id']))
