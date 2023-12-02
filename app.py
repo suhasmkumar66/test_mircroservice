@@ -150,7 +150,33 @@ class AddCartClass:
 		resp.status = falcon.HTTP_200
 		resp.body = json.dumps(result)
 
-
+class PlaceOrderClass:
+	def on_post(self,req,resp):
+		conn = conn_db()
+		data = json.loads(req.stream.read())
+		if 'order_number' in data and 'delivery_type' in data:
+			sQry = "select * from `orders`.cart_details where order_number = '{0}'".format(data['order_number'])
+			cur = conn.cursor()
+			cur.execute(sQry)
+			result = cur.fetchall()
+			now = datetime.now()
+			for row in result:
+				Iqry = "INSERT INTO `orders`.order_details (`customer_id`,`product_id`,`category_id`,\
+					`quantity`,`price`,`datetime`,`delivery_type`,`order_status`,`order_number`) \
+					values ({0},{1},{2},{3},{4},'{5}','{6}','{7}','{8}')"\
+					.format(row['customer_id'],row['product_id'],row['category_id'],row['quantity'],row['price'],now.strftime("%Y-%m-%d %H:%M:%S"),data['delivery_type'],'Order Confirmed',data['order_number'])
+				print(Iqry)
+				cur = conn.cursor()
+				cur.execute(Iqry)
+				conn.commit()
+			#commented now for testing purpose
+			# dQry = "delete from `orders`.cart_details where order_number = '{0}'".format(data['order_number'])
+			# cur = conn.cursor()
+			# cur.execute(dQry)
+			# conn.commit()
+			result = {"msg":"order created sucessfully","OrderNo":data['order_number'],'ordertime':now.strftime("%Y-%m-%d %H:%M:%S")}
+			resp.status = falcon.HTTP_200
+			resp.body = json.dumps(result)
 
 api = falcon.API()
 api.add_route('/register',RegisterClass())
@@ -162,3 +188,5 @@ api.add_route('/get-products', GetProductsClass())
 api.add_route('/search-products', SearchProductsClass())
 
 api.add_route('/addtocart', AddCartClass())
+
+api.add_route('/placeOrder', PlaceOrderClass())
