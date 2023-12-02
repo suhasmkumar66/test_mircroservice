@@ -177,6 +177,49 @@ class PlaceOrderClass:
 			result = {"msg":"order created sucessfully","OrderNo":data['order_number'],'ordertime':now.strftime("%Y-%m-%d %H:%M:%S")}
 			resp.status = falcon.HTTP_200
 			resp.body = json.dumps(result)
+		else:
+			result = {"error":"required params missing"}
+			resp.status = falcon.HTTP_400
+			resp.body = json.dumps(result)
+
+class UpdateOrderClass:
+	def on_post(self,req,resp):
+		conn = conn_db()
+		data = json.loads(req.stream.read())
+		if 'order_number' in data and 'order_status' in data:
+			now = datetime.now()
+			Uqry = "Update `orders`.order_details set order_status = '{0}',datetime = '{1}' where order_number = '{2}'".format(data['order_status'],now.strftime("%Y-%m-%d %H:%M:%S"),data['order_number'])
+			cur = conn.cursor()
+			cur.execute(Uqry)
+			conn.commit()
+			result = {"msg":"order status updated sucessfully","OrderNo":data['order_number'],'updatetime':now.strftime("%Y-%m-%d %H:%M:%S")}
+			resp.status = falcon.HTTP_200
+			resp.body = json.dumps(result)
+		else:
+			result = {"error":"required params missing"}
+			resp.status = falcon.HTTP_400
+			resp.body = json.dumps(result)
+
+class getCustomerOrdersClass:
+	def on_post(self,req,resp):
+		conn = conn_db()
+		data = json.loads(req.stream.read())
+		if 'customer_id' in data:
+			sQry = "select * from `orders`.order_details where customer_id = {0}".format(int(data['customer_id']))
+			cur = conn.cursor()
+			cur.execute(sQry)
+			result = cur.fetchall()
+			result_list = []
+			for row in result:
+				result_list.append(row)
+			resp.status = falcon.HTTP_200
+			resp.body = json.dumps(result)
+
+		else:
+			result = {"error":"required params missing"}
+			resp.status = falcon.HTTP_400
+			resp.body = json.dumps(result)
+
 
 api = falcon.API()
 api.add_route('/register',RegisterClass())
@@ -190,3 +233,7 @@ api.add_route('/search-products', SearchProductsClass())
 api.add_route('/addtocart', AddCartClass())
 
 api.add_route('/placeOrder', PlaceOrderClass())
+
+api.add_route('/updateOderStatus', UpdateOrderClass())
+
+api.add_route('/getCustomerOrders', getCustomerOrdersClass())
