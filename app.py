@@ -2,6 +2,9 @@ import json,falcon,sys,re,uuid
 import pymysql
 from datetime import datetime
 import base64
+import os,ssl
+from email.message import EmailMessage
+import smtplib
 
 def conn_db():
 	conn = pymysql.connect( 
@@ -12,6 +15,45 @@ def conn_db():
 			cursorclass=pymysql.cursors.DictCursor
 			)
 	return conn
+
+def create_email_and_send(customer_id,order_status,order_number):
+	conn = conn_db()
+	#get customer mailing address
+	UserQry = "select * from `users`.customers where id = '{0}'".format(int(customer_id))
+	cur = conn.cursor()
+	cur.execute(UserQry)
+	cus_output = cur.fetchone()
+	if cus_output is not None:
+		subject = "Your order has been {0}".format(order_status)
+		#do not change the allignment
+		body = """
+Dear Customer,
+
+Your order has been {0} and your order Number is {1}
+
+Regards,
+Pharm-e-cart
+""".format(order_status,order_number)
+		toaddress = cus_output['email']
+		send_mail(subject,body,toaddress)
+
+
+def send_mail(subject,body,email_receiver):
+	email_sender = "suhasmkumar66@gmail.com" #personal google account is set to send email
+	email_password = 'mzal hfmd cvle vbft'
+	em = EmailMessage()
+	em['From'] = email_sender
+	em['To'] = email_receiver
+	em['Subject'] = subject
+	em.set_content(body)
+
+	context = ssl.create_default_context()
+
+	with smtplib.SMTP_SSL('smtp.gmail.com',465,context=context) as smtp:
+		smtp.login(email_sender,email_password)
+		smtp.sendmail(email_sender,email_receiver,em.as_string())
+	
+
 class RegisterClass:
 	def on_post(self,req,resp):
 		conn = conn_db()
@@ -58,7 +100,6 @@ class LoginClass:
 		data = json.loads(req.stream.read())
 		if 'username' in data and 'password' in data:
 			sQry = "select * from `users`.customers where username = '{0}'".format(data['username'])
-			print(sQry)
 			cur = conn.cursor()
 			cur.execute(sQry)
 			output = cur.fetchone()
@@ -95,7 +136,6 @@ class GetProductsClass:
 			cur = conn.cursor()
 			cur.execute(sQry)
 			result = cur.fetchall()
-			print(result)
 			result_list = []
 			for row in result:
 				result_list.append(row)
@@ -141,7 +181,6 @@ class AddCartClass:
 					`order_number`,`quantity`,`price`) \
 					values ({0},{1},{2},'{3}',{4},{5})"\
 					.format(row['customer_id'],row['category_id'],row['product_id'],str(order_number),row['quantity'],row['price'])
-				print(Iqry)
 				cur = conn.cursor()
 				cur.execute(Iqry)
 				conn.commit()
@@ -154,7 +193,7 @@ class PlaceOrderClass:
 	def on_post(self,req,resp):
 		conn = conn_db()
 		data = json.loads(req.stream.read())
-		if 'order_number' in data and 'delivery_type' in data:
+		if 'order_number' in data and 'delivery_type' in data and 'customer_id' in data:
 			sQry = "select * from `orders`.cart_details where order_number = '{0}'".format(data['order_number'])
 			cur = conn.cursor()
 			cur.execute(sQry)
@@ -164,16 +203,30 @@ class PlaceOrderClass:
 				Iqry = "INSERT INTO `orders`.order_details (`customer_id`,`product_id`,`category_id`,\
 					`quantity`,`price`,`datetime`,`delivery_type`,`order_status`,`order_number`) \
 					values ({0},{1},{2},{3},{4},'{5}','{6}','{7}','{8}')"\
-					.format(row['customer_id'],row['product_id'],row['category_id'],row['quantity'],row['price'],now.strftime("%Y-%m-%d %H:%M:%S"),data['delivery_type'],'Order Confirmed',data['order_number'])
-				print(Iqry)
+					.format(row['customer_id'],row['product_id'],row['category_id'],row['quantity'],row['price'],now.strftime("%Y-%m-%d %H:%M:%S"),data['delivery_type'],'Confirmed',data['order_number'])
 				cur = conn.cursor()
 				cur.execute(Iqry)
 				conn.commit()
-			#commented now for testing purpose
-			# dQry = "delete from `orders`.cart_details where order_number = '{0}'".format(data['order_number'])
-			# cur = conn.cursor()
-			# cur.execute(dQry)
-			# conn.commit()
+
+				#Reduce the product quantity from Products
+				sPQry = "select * from `products`.product_list where product_id = '{0}'".format(row['product_id'])
+				cur.execute(sPQry)
+				output = cur.fetchone()
+				if output is not None:
+					curr_quantity = output['quantity']
+					updated_quantity = curr_quantity - row['quantity']
+					UptdQry = "Update `products`.product_list set quantity = '{0}' where product_id = '{1}'".format(int(updated_quantity),row['product_id'])
+					cur.execute(UptdQry)
+					conn.commit()
+
+
+			dQry = "delete from `orders`.cart_details where order_number = '{0}'".format(data['order_number'])
+			cur = conn.cursor()
+			cur.execute(dQry)
+			conn.commit()
+
+			#create_email_and_send(data['customer_id'],'Confirmed',data['order_number'])
+
 			result = {"msg":"order created sucessfully","OrderNo":data['order_number'],'ordertime':now.strftime("%Y-%m-%d %H:%M:%S")}
 			resp.status = falcon.HTTP_200
 			resp.body = json.dumps(result)
@@ -186,12 +239,32 @@ class UpdateOrderClass:
 	def on_post(self,req,resp):
 		conn = conn_db()
 		data = json.loads(req.stream.read())
-		if 'order_number' in data and 'order_status' in data:
+		if 'order_number' in data and 'order_status' in data and 'customer_id' in data:
 			now = datetime.now()
+			if data['order_status'] == 'Cancelled':
+				sQry = "select * from `orders`.order_details where order_number = '{0}'".format(data['order_number'])
+				cur = conn.cursor()
+				cur.execute(sQry)
+				result = cur.fetchall()
+				for row in result:
+					sPQry = "select * from `products`.product_list where product_id = '{0}'".format(row['product_id'])
+					cur.execute(sPQry)
+					output = cur.fetchone()
+					if output is not None:
+						curr_quantity = output['quantity']
+						updated_quantity = int(curr_quantity) + int(row['quantity'])
+						UptdQry = "Update `products`.product_list set quantity = '{0}' where product_id = '{1}'".format(int(updated_quantity),row['product_id'])
+						cur.execute(UptdQry)
+						conn.commit()
+
+			#update the status against order number
 			Uqry = "Update `orders`.order_details set order_status = '{0}',datetime = '{1}' where order_number = '{2}'".format(data['order_status'],now.strftime("%Y-%m-%d %H:%M:%S"),data['order_number'])
 			cur = conn.cursor()
 			cur.execute(Uqry)
 			conn.commit()
+
+			
+			#create_email_and_send(data['customer_id'],data['order_status'],data['order_number'])
 			result = {"msg":"order status updated sucessfully","OrderNo":data['order_number'],'updatetime':now.strftime("%Y-%m-%d %H:%M:%S")}
 			resp.status = falcon.HTTP_200
 			resp.body = json.dumps(result)
