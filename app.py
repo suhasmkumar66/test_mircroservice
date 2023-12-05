@@ -261,7 +261,7 @@ class getCustomerOrdersClass:
 		conn = conn_db()
 		data = json.loads(req.stream.read())
 		if 'customer_id' in data:
-			sQry = "SELECT product_list.product_name,product_list.product_description,order_details.quantity,order_details.price,order_details.datetime,order_details.delivery_type,order_details.order_status,order_details.order_number FROM `orders`.order_details INNER JOIN `products`.product_list ON order_details.product_id=product_list.product_id where order_details.customer_id = {0}".format(int(data['customer_id']))
+			sQry = "SELECT product_list.product_name,product_list.product_description,order_details.quantity,order_details.price,order_details.datetime,order_details.delivery_type,order_details.order_status,order_details.order_number FROM `orders`.order_details INNER JOIN `products`.product_list ON order_details.product_id=product_list.product_id where order_details.customer_id = {0} order by order_number".format(int(data['customer_id']))
 			cur = conn.cursor()
 			cur.execute(sQry)
 			result = cur.fetchall()
