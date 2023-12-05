@@ -72,6 +72,14 @@ if __name__ == "__main__":
 	result_list = []
 	for row in result:
 		result_list.append(row)
+		now = datetime.now()
+		Iqry = "INSERT INTO `products`.inventory_products (`product_id`,`category_id`,\
+					`quantity`,`price`,`datetime`,`pharmacist_id`,`order_status`) \
+					values ({0},{1},{2},{3},'{4}','{5}','{6}')"\
+					.format(row['product_id'],row['category_id'],15,row['price'],str(now.strftime("%Y-%m-%d %H:%M:%S")),0,'PO Raised')
+		print(Iqry)
+		cur.execute(Iqry)
+		conn.commit()
 		
 	if len(result_list) > 0:
 		sQry = "select * from `users`.customers where role = 'Vendor'"

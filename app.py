@@ -241,29 +241,12 @@ class UpdateOrderClass:
 		data = json.loads(req.stream.read())
 		if 'order_number' in data and 'order_status' in data and 'customer_id' in data:
 			now = datetime.now()
-			if data['order_status'] == 'Cancelled':
-				sQry = "select * from `orders`.order_details where order_number = '{0}'".format(data['order_number'])
-				cur = conn.cursor()
-				cur.execute(sQry)
-				result = cur.fetchall()
-				for row in result:
-					sPQry = "select * from `products`.product_list where product_id = '{0}'".format(row['product_id'])
-					cur.execute(sPQry)
-					output = cur.fetchone()
-					if output is not None:
-						curr_quantity = output['quantity']
-						updated_quantity = int(curr_quantity) + int(row['quantity'])
-						UptdQry = "Update `products`.product_list set quantity = '{0}' where product_id = '{1}'".format(int(updated_quantity),row['product_id'])
-						cur.execute(UptdQry)
-						conn.commit()
-
 			#update the status against order number
 			Uqry = "Update `orders`.order_details set order_status = '{0}',datetime = '{1}' where order_number = '{2}'".format(data['order_status'],now.strftime("%Y-%m-%d %H:%M:%S"),data['order_number'])
 			cur = conn.cursor()
 			cur.execute(Uqry)
 			conn.commit()
 
-			
 			create_email_and_send(data['customer_id'],data['order_status'],data['order_number'])
 			result = {"msg":"order status updated sucessfully","OrderNo":data['order_number'],'updatetime':now.strftime("%Y-%m-%d %H:%M:%S")}
 			resp.status = falcon.HTTP_200
@@ -293,6 +276,48 @@ class getCustomerOrdersClass:
 			resp.status = falcon.HTTP_400
 			resp.body = json.dumps(result)
 
+class updateInventoryClass:
+	def on_post(self,req,resp):
+		conn = conn_db()
+		data = json.loads(req.stream.read())
+		if 'order_number' in data:
+			sQry = "select * from `orders`.order_details where order_number = '{0}'".format(data['order_number'])
+			cur = conn.cursor()
+			cur.execute(sQry)
+			result = cur.fetchall()
+			for row in result:
+				sPQry = "select * from `products`.product_list where product_id = '{0}'".format(row['product_id'])
+				cur.execute(sPQry)
+				output = cur.fetchone()
+				if output is not None:
+					curr_quantity = output['quantity']
+					updated_quantity = int(curr_quantity) + int(row['quantity'])
+					UptdQry = "Update `products`.product_list set quantity = '{0}' where product_id = '{1}'".format(int(updated_quantity),row['product_id'])
+					cur.execute(UptdQry)
+					conn.commit()
+			result = {"msg":"Inventory updated sucessfully","OrderNo":data['order_number']}
+			resp.status = falcon.HTTP_200
+			resp.body = json.dumps(result)
+			
+		else:
+			result = {"error":"required params missing"}
+			resp.status = falcon.HTTP_400
+			resp.body = json.dumps(result)
+
+
+class getInventoryProductsClass:
+	def on_post(self,req,resp):
+		conn = conn_db()
+		sQry = "SELECT product_list.product_name,product_list.product_description,inventory_products.quantity,inventory_products.price,inventory_products.datetime,inventory_products.order_status FROM `products`.inventory_products INNER JOIN `products`.product_list ON inventory_products.product_id=product_list.product_id where inventory_products.order_status = 'PO Raised'"	
+		cur = conn.cursor()
+		cur.execute(sQry)
+		result = cur.fetchall()
+		result_list = []
+		for row in result:
+			result_list.append(row)
+		resp.status = falcon.HTTP_200
+		resp.body = json.dumps(result)
+
 
 api = falcon.API()
 api.add_route('/register',RegisterClass())
@@ -310,3 +335,7 @@ api.add_route('/placeOrder', PlaceOrderClass())
 api.add_route('/updateOderStatus', UpdateOrderClass())
 
 api.add_route('/getCustomerOrders', getCustomerOrdersClass())
+
+api.add_route('/updateInventory', updateInventoryClass())
+
+api.add_route('/getInventoryProducts', getInventoryProductsClass())
