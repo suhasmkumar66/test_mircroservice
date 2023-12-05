@@ -189,7 +189,7 @@ class AddCartClass:
 				cur.execute(Qry)
 				result = cur.fetchall()
 				for r_set in result:
-					if r_set["quantity"] < row["quantity"]:
+					if int(r_set["quantity"]) < int(row["quantity"]):
 						resp.status = falcon.HTTP_400
 						resp.body = json.dumps({"msg": "selected quantity is invalid"})
 						return
