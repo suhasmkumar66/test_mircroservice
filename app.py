@@ -168,24 +168,46 @@ class SearchProductsClass:
 			resp.body = json.dumps(result)
 
 class AddCartClass:
-	def on_post(self,req,resp):
+	def on_post(self, req, resp):
 		conn = conn_db()
 		data = json.loads(req.stream.read())
-		random = str(uuid.uuid4()) 
+		random = str(uuid.uuid4())
 		random = random.upper()
-		random = random.replace("-","")
+		random = random.replace("-", "")
 		order_number = random[0:10]
 		for row in data:
-			if 'category_id' in row and 'product_id' in row and 'customer_id' in row and 'quantity' in row and 'price' in row:
-				Iqry = "INSERT INTO `orders`.cart_details (`customer_id`,`category_id`,`product_id`,\
-					`order_number`,`quantity`,`price`) \
-					values ({0},{1},{2},'{3}',{4},{5})"\
-					.format(row['customer_id'],row['category_id'],row['product_id'],str(order_number),row['quantity'],row['price'])
+			if (
+				"category_id" in row
+				and "product_id" in row
+				and "customer_id" in row
+				and "quantity" in row
+				and "price" in row
+			):
+				# validate whether quantity is invalid or not
+				Qry = f"select quantity from `products`.product_list where category_id='{row['category_id']}' and product_id='{row['product_id']}' "
 				cur = conn.cursor()
-				cur.execute(Iqry)
-				conn.commit()
-				
-		result = {"msg":"cart created sucessfully","OrderNo":str(order_number)}
+				cur.execute(Qry)
+				result = cur.fetchall()
+				for r_set in result:
+					if r_set["quantity"] < row["quantity"]:
+						resp.status = falcon.HTTP_400
+						resp.body = json.dumps({"msg": "selected quantity is invalid"})
+						return
+			Iqry = "INSERT INTO `orders`.cart_details (`customer_id`,`category_id`,`product_id`,\
+					`order_number`,`quantity`,`price`) \
+					values ({0},{1},{2},'{3}',{4},{5})".format(
+				row["customer_id"],
+				row["category_id"],
+				row["product_id"],
+				str(order_number),
+				row["quantity"],
+				row["price"],
+			)
+			cur = conn.cursor()
+			cur.execute(Iqry)
+			conn.commit()
+
+		result = {"msg": "cart created sucessfully", "OrderNo": str(order_number)}
 		resp.status = falcon.HTTP_200
 		resp.body = json.dumps(result)
 
