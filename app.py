@@ -340,6 +340,41 @@ class getInventoryProductsClass:
 		resp.status = falcon.HTTP_200
 		resp.body = json.dumps(result)
 
+class updateInventoryPharmacists:
+	def on_post(self,req,resp):
+		conn = conn_db()
+		data = json.loads(req.stream.read())
+		if 'pharmacist_id' in data:
+			sQry = "SELECT * from `products`.inventory_products where order_status = 'PO Raised'"	
+			cur = conn.cursor()
+			cur.execute(sQry)
+			result = cur.fetchall()
+			for row in result:
+				now = datetime.now()
+				updtQry = "update `products`.inventory_products set pharmacist_id = {0}, order_status = 'Approved', datetime = '{1}' where id = {2}".format(data['pharmacist_id'],now.strftime("%Y-%m-%d %H:%M:%S"),row['id'])
+				cur.execute(updtQry)
+				conn.commit()
+				sPQry = "select * from `products`.product_list where product_id = '{0}'".format(row['product_id'])
+				cur.execute(sPQry)
+				output = cur.fetchone()
+				if output is not None:
+					curr_quantity = output['quantity']
+					updated_quantity = int(curr_quantity) + int(row['quantity'])
+					UptdQry = "Update `products`.product_list set quantity = '{0}' where product_id = '{1}'".format(int(updated_quantity),row['product_id'])
+					cur.execute(UptdQry)
+					conn.commit()
+			result = {"msg":"Inventory updated sucessfully"}
+			resp.status = falcon.HTTP_200
+			resp.body = json.dumps(result)
+		else:
+			result = {"error":"required params missing"}
+			resp.status = falcon.HTTP_400
+			resp.body = json.dumps(result)
+
+
+
+
+
 
 api = falcon.API()
 api.add_route('/register',RegisterClass())
@@ -359,5 +394,7 @@ api.add_route('/updateOderStatus', UpdateOrderClass())
 api.add_route('/getCustomerOrders', getCustomerOrdersClass())
 
 api.add_route('/updateInventory', updateInventoryClass())
+
+api.add_route('/updateInventoryPharmacists', updateInventoryPharmacists())
 
 api.add_route('/getInventoryProducts', getInventoryProductsClass())
