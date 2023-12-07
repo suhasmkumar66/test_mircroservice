@@ -371,6 +371,26 @@ class updateInventoryPharmacists:
 			resp.status = falcon.HTTP_400
 			resp.body = json.dumps(result)
 
+class getCustomerOrdernoClass:
+	def on_post(self,req,resp):
+		conn = conn_db()
+		data = json.loads(req.stream.read())
+		if 'order_number' in data:
+			sQry = "SELECT product_list.product_name,product_list.product_description,order_details.quantity,order_details.price,order_details.datetime,order_details.delivery_type,order_details.order_status,order_details.order_number FROM `orders`.order_details INNER JOIN `products`.product_list ON order_details.product_id=product_list.product_id where order_details.order_number = '{0}'".format(data['order_number'])
+			print(sQry)
+			cur = conn.cursor()
+			cur.execute(sQry)
+			result = cur.fetchall()
+			result_list = []
+			for row in result:
+				result_list.append(row)
+			resp.status = falcon.HTTP_200
+			resp.body = json.dumps(result)
+
+		else:
+			result = {"error":"required params missing"}
+			resp.status = falcon.HTTP_400
+			resp.body = json.dumps(result)
 
 
 
@@ -398,3 +418,5 @@ api.add_route('/updateInventory', updateInventoryClass())
 api.add_route('/updateInventoryPharmacists', updateInventoryPharmacists())
 
 api.add_route('/getInventoryProducts', getInventoryProductsClass())
+
+api.add_route('/getCustomerOrderno', getCustomerOrdernoClass())
